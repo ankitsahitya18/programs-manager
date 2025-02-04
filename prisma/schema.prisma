@@ -12,3 +12,135 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum ProgramStatus {
+  Draft
+  Live
+}
+
+enum AppleLogoSize {
+  square
+  rectangle
+}
+
+model Program {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(255)
+  description      String             @db.VarChar(255)
+  status           ProgramStatus      @default(Draft)
+  webhookId        String?            @db.VarChar(255)
+  pointsEnabled    Boolean            @default(false)
+  pointsExpire     Boolean            @default(true)
+  expirationPeriod Int                @default(12) // number of months until expiration 
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
+  tiers            Tier[]
+  programMarketing ProgramMarketing[]
+  locales          ProgramLocale[]
+}
+
+model ProgramLocale {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @unique @db.VarChar(255)
+  description String   @db.VarChar(255)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  programId Int
+  program   Program @relation(fields: [programId], references: [id])
+
+  @@index([programId])
+}
+
+model ProgramMarketing {
+  id        Int                      @id @default(autoincrement())
+  reward    String                   @db.VarChar(5000)
+  status    ProgramStatus            @default(Live)
+  position  Int?
+  programId Int
+  program   Program                  @relation(fields: [programId], references: [id])
+  createdAt DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime                 @updatedAt @db.Timestamptz(3)
+  tiers     ProgramMarketingTier[]
+  locales   ProgramMarketingLocale[]
+
+  @@index([programId])
+}
+
+model ProgramMarketingTier {
+  id                 Int              @id @default(autoincrement())
+  programMarketingId Int
+  programMarketing   ProgramMarketing @relation(fields: [programMarketingId], references: [id])
+  tierId             BigInt
+  tier               Tier             @relation(fields: [tierId], references: [id])
+  enabled            Boolean          @default(false)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+}
+
+model ProgramMarketingLocale {
+  id                 Int              @id @default(autoincrement())
+  programMarketingId Int
+  programMarketing   ProgramMarketing @relation(fields: [programMarketingId], references: [id])
+  reward             String           @db.VarChar(5000)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([programMarketingId])
+}
+
+model Tier {
+  id                                BigInt                 @id @default(autoincrement())
+  programId                         Int
+  program                           Program                @relation(fields: [programId], references: [id])
+  name                              String
+  index                             Int
+  passColors                        Json?
+  tierBenefits                      String?                @db.VarChar(255)
+  description                       String?                @db.VarChar(255)
+  information                       String?                @db.VarChar(255)
+  informationFieldLockscreenMessage String?                @db.VarChar(255)
+  iconImageUrl                      String?                @db.VarChar(750)
+  logoImageUrl                      String?                @db.VarChar(750)
+  appleLogoImageUrl                 String?                @db.VarChar(750)
+  stripImageUrl                     String?                @db.VarChar(750)
+  heroImageUrl                      String?                @db.VarChar(750)
+  samplePassUrl                     String?                @db.VarChar(750)
+  companyName                       String?                @db.VarChar(750)
+  programName                       String?                @db.VarChar(750)
+  appleLogoSize                     AppleLogoSize          @default(square)
+  localeData                        Json?
+  createdAt                         DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt                         DateTime               @updatedAt @db.Timestamptz(3)
+  expiryDate                        DateTime?
+  pointThreshold                    Int                    @default(0)
+  benefitsTier                      TierBenefits[]
+  locales                           TierLocale[]
+  marketingTiers                    ProgramMarketingTier[]
+
+  @@unique([name, programId])
+  @@index([programId])
+}
+
+model TierBenefits {
+  id        BigInt   @id @default(autoincrement())
+  tierId    BigInt
+  tier      Tier     @relation(fields: [tierId], references: [id])
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model TierLocale {
+  id           BigInt   @id @default(autoincrement())
+  tierId       BigInt
+  tier         Tier     @relation(fields: [tierId], references: [id])
+  localeId     String
+  name         String   @unique @db.VarChar(255)
+  tierBenefits String   @db.VarChar(255)
+  description  String   @db.VarChar(255)
+  information  String   @db.VarChar(255)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([tierId, localeId])
+  @@index([tierId])
+}
